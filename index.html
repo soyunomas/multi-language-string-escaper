@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Language String Escaper & Code Gen</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            padding-top: 2rem; /* Mayor espacio superior */
+            padding-bottom: 3rem; /* Espacio inferior */
+        }
+        textarea {
+            min-height: 300px; /* Un poco más alto */
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1050;
+            cursor: pointer;
+        }
+        #variableNameContainer.hidden { /* Simplificado para ocultar */
+             display: none;
+        }
+        .option-disabled { /* Estilo para opciones deshabilitadas visualmente */
+             opacity: 0.6;
+             pointer-events: none; /* No interactuable */
+        }
+         .option-disabled .form-check-label {
+            text-decoration: line-through;
+         }
+        #copyButton {
+            min-width: 90px;
+        }
+        .form-check-label, .form-label {
+             user-select: none;
+        }
+        #stringTypeContainer .form-check { /* Espaciado entre tipos de cadena */
+            margin-bottom: 0.5rem;
+        }
+         /* No más CSS personalizado para fieldset/legend */
+    </style>
+</head>
+<body>
+
+    <!-- Botón para cambiar tema -->
+    <a id="themeToggle" class="btn btn-outline-secondary theme-toggle">
+        <i class="bi bi-moon-stars-fill"></i>
+    </a>
+
+    <div class="container mt-4">
+        <header class="text-center mb-4">
+            <h1 class="display-5">Multi-Language String Escaper & Code Generator</h1>
+            <p class="lead mb-4">
+                Pega tu texto, elige el lenguaje destino y las opciones para generar una cadena segura y el código correspondiente.
+            </p>
+        </header>
+
+        <hr class="mb-4">
+
+        <!-- Sección Ayuda / Instrucciones -->
+        <div class="accordion mb-4 shadow-sm" id="helpAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHelp" aria-expanded="false" aria-controls="collapseHelp">
+                        <i class="bi bi-info-circle-fill me-2"></i> Ayuda y Funcionalidades
+                    </button>
+                </h2>
+                <div id="collapseHelp" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <ul>
+                            <li><strong>Input:</strong> Pega aquí el texto que deseas escapar.</li>
+                            <li><strong>Output:</strong> Aquí aparecerá el texto escapado y/o el código generado.</li>
+                            <li><strong>Lenguaje Destino:</strong> Selecciona el lenguaje para el cual generar la cadena (JavaScript, Bash, Python, PHP).</li>
+                            <li><strong>Tipo de Cadena:</strong> Elige cómo se delimitará la cadena en el lenguaje seleccionado. Las opciones disponibles cambiarán según el lenguaje.
+                                <ul>
+                                    <li>JS: Plantilla (`), Simple ('), Doble (").</li>
+                                    <li>Bash: Doble ("), ANSI-C ($'...'). <em>Nota: Comillas simples no soportadas directamente por su complejidad de escape.</em></li>
+                                    <li>Python: Simple ('), Doble ("), Triple Doble (""").</li>
+                                    <li>PHP: Simple ('), Doble (").</li>
+                                </ul>
+                            </li>
+                            <li><strong>Opciones Adicionales:</strong>
+                                <ul>
+                                    <li><strong>Escapar Barras Invertidas (\\):</strong> Convierte cada <code>\</code> en <code>\\</code> (o el escape equivalente del lenguaje).</li>
+                                    <li><strong>Escapar Interpolación/Variables ($):</strong> Varía según el lenguaje:
+                                        <ul>
+                                             <li>JS (Plantillas): Escapa <code>${</code> como <code>\${</code>.</li>
+                                             <li>Bash (Dobles), PHP (Dobles): Escapa <code>$</code> como <code>\$</code> para prevenir expansión de variables.</li>
+                                             <li>Otros: Opción deshabilitada.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Convertir Saltos de Línea a \\n:</strong> Reemplaza saltos de línea por <code>\n</code> (o equivalente). Especialmente útil para tipos de cadena que no soportan multilínea directamente.</li>
+                                    <li><strong>Eliminar Comentarios (SQL/JS):</strong> Intenta eliminar <code>--</code> y <code>/* */</code>. <em>Nota: Es básico y puede no funcionar para comentarios específicos de Python (#) o PHP (#, //) dentro del texto original.</em></li>
+                                    <li><strong>Generar Declaración de Variable:</strong> Envuelve el resultado en la sintaxis de declaración de variable del lenguaje elegido.</li>
+                                </ul>
+                            </li>
+                             <li><strong><i class="bi bi-moon-stars-fill"></i> / <i class="bi bi-sun-fill"></i>:</strong> Cambia tema oscuro/claro.</li>
+                             <li><strong>Botón Copiar:</strong> Copia el output.</li>
+                        </ul>
+                         <p class="small text-muted">Las reglas de escape pueden ser complejas. Revisa siempre el resultado generado para asegurar que cumple tus expectativas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main>
+            <div class="row g-4">
+                <!-- Columna Izquierda: Input y Opciones -->
+                <div class="col-lg-6 d-flex flex-column">
+
+                    <div class="mb-3">
+                        <label for="inputText" class="form-label fw-bold">Input:</label>
+                        <textarea class="form-control" id="inputText" placeholder="Pega tu código SQL, HTML, texto plano, etc. aquí..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                         <label for="targetLanguage" class="form-label fw-bold">Lenguaje Destino:</label>
+                         <select class="form-select" id="targetLanguage">
+                             <option value="javascript" selected>JavaScript</option>
+                             <option value="bash">Bash</option>
+                             <option value="python">Python</option>
+                             <option value="php">PHP</option>
+                         </select>
+                     </div>
+
+                    <!-- Tipo de Cadena (Estilo Bootstrap) -->
+                    <div class="bg-body-tertiary p-3 rounded mb-3">
+                        <p class="fw-bold mb-2">Tipo de Cadena:</p>
+                        <div id="stringTypeContainer">
+                            <!-- Las opciones se generarán dinámicamente aquí -->
+                        </div>
+                    </div>
+
+                    <!-- Opciones Adicionales (Estilo Bootstrap) -->
+                    <div class="bg-body-tertiary p-3 rounded mb-3 flex-grow-1">
+                         <p class="fw-bold mb-2">Opciones Adicionales:</p>
+                         <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="escapeBackslash">
+                            <label class="form-check-label" for="escapeBackslash">Escapar Barras Invertidas (<code>\</code> &rarr; <code>\\</code>)</label>
+                        </div>
+                         <div class="form-check form-switch" id="escapeInterpolationContainer">
+                            <input class="form-check-input" type="checkbox" role="switch" id="escapeInterpolation">
+                            <label class="form-check-label" for="escapeInterpolation" id="escapeInterpolationLabel">Escapar Interpolación/Variables ($)</label>
+                        </div>
+                         <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="convertNewlines">
+                            <label class="form-check-label" for="convertNewlines">Convertir Saltos de Línea a <code>\n</code></label>
+                        </div>
+                         <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="removeComments">
+                            <label class="form-check-label" for="removeComments">Eliminar Comentarios (<code>--</code>, <code>/* */</code>) <small class="text-muted">(Básico)</small></label>
+                        </div>
+                         <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="generateVariable">
+                            <label class="form-check-label" for="generateVariable">Generar Declaración de Variable</label>
+                        </div>
+                        <div id="variableNameContainer" class="mb-2 hidden"> <!-- Usar 'hidden' class manejada por JS -->
+                            <label for="variableName" class="form-label small mb-1">Nombre de la Variable:</label>
+                            <input type="text" class="form-control form-control-sm" id="variableName" placeholder="myVariable">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Output -->
+                <div class="col-lg-6 d-flex flex-column">
+                     <div class="mb-3 flex-grow-1 d-flex flex-column">
+                        <label for="outputText" class="form-label fw-bold">Output:</label>
+                        <textarea class="form-control flex-grow-1" id="outputText" readonly placeholder="El código generado aparecerá aquí..."></textarea>
+                    </div>
+                    <button class="btn btn-primary w-100" id="copyButton">
+                        <i class="bi bi-clipboard me-1"></i> Copiar al Portapapeles
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center text-muted mt-5 mb-3">
+            <small>Herramienta de ayuda para desarrolladores. Revisa siempre el código generado.</small>
+        </footer>
+
+    </div> <!-- /container -->
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        // --- Referencias DOM ---
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const targetLanguageSelect = document.getElementById('targetLanguage');
+        const stringTypeContainer = document.getElementById('stringTypeContainer');
+        const escapeBackslashCheckbox = document.getElementById('escapeBackslash');
+        const escapeInterpolationContainer = document.getElementById('escapeInterpolationContainer');
+        const escapeInterpolationCheckbox = document.getElementById('escapeInterpolation');
+        const escapeInterpolationLabel = document.getElementById('escapeInterpolationLabel');
+        const convertNewlinesCheckbox = document.getElementById('convertNewlines');
+        const removeCommentsCheckbox = document.getElementById('removeComments');
+        const generateVariableCheckbox = document.getElementById('generateVariable');
+        const variableNameContainer = document.getElementById('variableNameContainer');
+        const variableNameInput = document.getElementById('variableName');
+        const copyButton = document.getElementById('copyButton');
+        const themeToggle = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+
+        // --- Configuración por Lenguaje ---
+        const languageConfig = {
+            javascript: {
+                name: 'JavaScript',
+                variablePrefix: 'const ',
+                variableSuffix: ';',
+                stringTypes: {
+                    template: { label: '<code>`</code>Plantilla Literal<code>`</code> (Multilínea)', quote: '`', escapeChar: '\\', needsNewlineConversion: false, escapes: {'`': '\\`'}, interpolCheck: /\$\{/g, interpolEscape: '\\${', interpolLabel: 'Escapar Interpolación (<code>${}</code>)' },
+                    single:   { label: "<code>'</code>Comillas Simples<code>'</code>", quote: "'", escapeChar: '\\', needsNewlineConversion: true, escapes: {"'": "\\'"} },
+                    double:   { label: '<code>"</code>Comillas Dobles<code>"</code>', quote: '"', escapeChar: '\\', needsNewlineConversion: true, escapes: {'"': '\\"'} }
+                }
+            },
+            bash: {
+                name: 'Bash',
+                variablePrefix: '', // Bash variables often don't need a keyword like const/var
+                variableSuffix: '',
+                stringTypes: {
+                    // Simple quotes are too complex to handle reliably here ('part1'\''part2')
+                    double: { label: '<code>"</code>Comillas Dobles<code>"</code> (Permite $var)', quote: '"', escapeChar: '\\', needsNewlineConversion: true, escapes: {'"': '\\"', '$': '\\$', '`': '\\`'}, interpolCheck: /\$/g, interpolEscape: '\\$', interpolLabel: 'Escapar Variables (<code>$</code>)'},
+                    ansic:  { label: "<code>$'...'</code> ANSI-C Quoting (Interpreta \\n, \\t)", quote: "'", prefix: "$", escapeChar: '\\', needsNewlineConversion: false, escapes: {"'": "\\'"} } // Needs \n conversion implicit
+                }
+             },
+            python: {
+                name: 'Python',
+                variablePrefix: '', // Typically just name = value
+                variableSuffix: '',
+                stringTypes: {
+                    single:       { label: "<code>'</code>Comillas Simples<code>'</code>", quote: "'", escapeChar: '\\', needsNewlineConversion: true, escapes: {"'": "\\'"} },
+                    double:       { label: '<code>"</code>Comillas Dobles<code>"</code>', quote: '"', escapeChar: '\\', needsNewlineConversion: true, escapes: {'"': '\\"'} },
+                    triple_double: { label: '<code>"""</code>Triple Dobles<code>"""</code> (Multilínea)', quote: '"""', escapeChar: '\\', needsNewlineConversion: false, escapes: {'"""': '\\"""'} } // Basic escape for sequence
+                }
+            },
+            php: {
+                name: 'PHP',
+                variablePrefix: '$',
+                variableSuffix: ';',
+                stringTypes: {
+                    single: { label: "<code>'</code>Comillas Simples<code>'</code> (Literal)", quote: "'", escapeChar: '\\', needsNewlineConversion: true, escapes: {"'": "\\'", '\\': '\\\\'} }, // PHP single quotes need literal \ escaped
+                    double: { label: '<code>"</code>Comillas Dobles<code>"</code> (Interpreta $var, \\n)', quote: '"', escapeChar: '\\', needsNewlineConversion: false, // PHP doubles handle real newlines
+                                escapes: {'"': '\\"', '$': '\\$'}, interpolCheck: /\$/g, interpolEscape: '\\$', interpolLabel: 'Escapar Variables (<code>$</code>)'}
+                    // Heredoc/Nowdoc omitted for simplicity for now
+                }
+            }
+        };
+
+        // --- Lógica Principal ---
+        // --- *** FUNCIÓN escapeText CORREGIDA *** ---
+        function escapeText() {
+            let text = inputText.value;
+            const language = targetLanguageSelect.value;
+            const config = languageConfig[language];
+            const selectedStringTypeKey = document.querySelector('#stringTypeContainer input[name="stringType"]:checked')?.value;
+
+            if (!config || !selectedStringTypeKey || !config.stringTypes[selectedStringTypeKey]) {
+                 outputText.value = "// Error: Configuración de lenguaje o tipo de cadena inválida.";
+                 resetCopyButtonState();
+                 return;
+            }
+
+            const stringType = config.stringTypes[selectedStringTypeKey];
+
+            const shouldEscapeBackslash = escapeBackslashCheckbox.checked;
+            const shouldEscapeInterpolation = escapeInterpolationCheckbox.checked && !escapeInterpolationContainer.classList.contains('option-disabled');
+            const shouldConvertNewlines = convertNewlinesCheckbox.checked;
+            const shouldRemoveComments = removeCommentsCheckbox.checked;
+            const shouldGenerateVariable = generateVariableCheckbox.checked;
+            const variableName = variableNameInput.value.trim() || (language === 'php' ? 'miVariable' : 'my_variable');
+
+            // 1. (Opcional) Eliminar Comentarios
+            if (shouldRemoveComments) {
+                text = text.replace(/--.*/g, ''); // SQL comments
+                text = text.replace(/\/\*[\s\S]*?\*\//g, ''); // C-style comments
+                // Considerar otros tipos si es necesario (# para Python/Bash/PHP, // para JS/PHP)
+                // text = text.replace(/^#.*/gm, ''); // Podría eliminar líneas deseadas si '#' está en medio
+                text = text.replace(/^\s*[\r\n]/gm, ''); // Limpiar líneas vacías resultantes
+            }
+
+            // --- Lógica de Escape Refinada ---
+            const escapeChar = stringType.escapeChar; // Generalmente '\'
+            const specificEscapes = { ...stringType.escapes }; // Copia de los escapes específicos
+
+            // ¿Requiere este tipo de string específicamente escapar el escapeChar? (e.g., PHP single quotes '\\': '\\\\')
+            const requiresEscapeCharItselfEscaping = specificEscapes[escapeChar] !== undefined;
+            const escapeCharReplacement = requiresEscapeCharItselfEscaping ? specificEscapes[escapeChar] : `${escapeChar}${escapeChar}`; // Cómo debe reemplazarse '\'
+
+            // Eliminar el escape del propio escapeChar de este mapa, se manejará después.
+            delete specificEscapes[escapeChar];
+
+            // 2. (Opcional) Convertir Saltos de Línea (puede ir antes o después de escapes específicos)
+            const forceNewlineConversion = stringType.needsNewlineConversion;
+            if (shouldConvertNewlines || forceNewlineConversion) {
+                 // Usar el caracter de escape correcto definido en config
+                text = text.replace(/\r\n/g, `${escapeChar}n`).replace(/\n/g, `${escapeChar}n`).replace(/\r/g, `${escapeChar}n`); // Cubrir \r también
+            }
+
+            // 3. Escapar caracteres específicos del tipo de cadena (ej: ', ", `), EXCLUYENDO el propio '\'
+            for (const char in specificEscapes) {
+                 // Escapar 'char' para usarlo en la regex de forma segura
+                const escapedCharForRegex = char.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const regex = new RegExp(escapedCharForRegex, 'g');
+                text = text.replace(regex, specificEscapes[char]);
+            }
+
+            // 4. Escapar el propio caracter de escape ('\') SI ES NECESARIO
+            //    (ya sea globalmente solicitado o específicamente requerido por el tipo)
+            if (shouldEscapeBackslash || requiresEscapeCharItselfEscaping) {
+                // Escapar el escapeChar para usarlo en la regex de forma segura (doble escape necesario para el constructor RegExp)
+                const escapedEscapeCharForRegex = escapeChar.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const escapeCharRegex = new RegExp(`\\${escapedEscapeCharForRegex}`, 'g');
+                text = text.replace(escapeCharRegex, escapeCharReplacement);
+            }
+
+            // 5. (Opcional) Escapar Interpolación/Variables (Debe hacerse después de escapar $ o { si aplica)
+            if (shouldEscapeInterpolation && stringType.interpolCheck && stringType.interpolEscape) {
+                text = text.replace(stringType.interpolCheck, stringType.interpolEscape);
+            }
+
+            // 6. Construir resultado final
+            let result = '';
+            const quote = stringType.quote;
+            const prefix = stringType.prefix || '';
+
+            if (shouldGenerateVariable) {
+                result = `${config.variablePrefix}${variableName} = ${prefix}${quote}${text}${quote}${config.variableSuffix}`;
+            } else {
+                result = `${prefix}${quote}${text}${quote}`;
+            }
+
+            outputText.value = result;
+            resetCopyButtonState(); // Asegurar que el botón no se quede en 'copiado'
+        }
+        // --- *** FIN FUNCIÓN escapeText CORREGIDA *** ---
+
+
+        // --- Actualización Dinámica de UI ---
+        function updateStringTypes() {
+            const language = targetLanguageSelect.value;
+            const config = languageConfig[language];
+            stringTypeContainer.innerHTML = ''; // Limpiar opciones anteriores
+
+            if (!config || !config.stringTypes) return;
+
+            let isFirst = true;
+            for (const key in config.stringTypes) {
+                const type = config.stringTypes[key];
+                const div = document.createElement('div');
+                div.className = 'form-check';
+
+                const input = document.createElement('input');
+                input.className = 'form-check-input';
+                input.type = 'radio';
+                input.name = 'stringType';
+                input.id = `stringType_${key}`;
+                input.value = key;
+                if (isFirst) {
+                    input.checked = true;
+                    isFirst = false;
+                }
+                input.addEventListener('change', updateOptionsAndEscape); // Actualizar al cambiar
+
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `stringType_${key}`;
+                label.innerHTML = type.label; // Usar innerHTML para renderizar <code>
+
+                div.appendChild(input);
+                div.appendChild(label);
+                stringTypeContainer.appendChild(div);
+            }
+            updateOptionsAndEscape(); // Llamar una vez para establecer estado inicial y escapar
+        }
+
+         function updateOptionsAndEscape() {
+             const language = targetLanguageSelect.value;
+             const config = languageConfig[language];
+             const selectedStringTypeKey = document.querySelector('#stringTypeContainer input[name="stringType"]:checked')?.value;
+
+             if (!config || !selectedStringTypeKey || !config.stringTypes[selectedStringTypeKey]) {
+                 escapeInterpolationContainer.classList.add('option-disabled');
+                 escapeInterpolationCheckbox.checked = false;
+                 escapeText();
+                 return;
+             }
+
+             const stringType = config.stringTypes[selectedStringTypeKey];
+
+             // Habilitar/deshabilitar opción de interpolación
+             if (stringType?.interpolCheck) {
+                 escapeInterpolationContainer.style.display = '';
+                 escapeInterpolationContainer.classList.remove('option-disabled');
+                 escapeInterpolationLabel.innerHTML = stringType.interpolLabel || 'Escapar Interpolación/Variables (<code>$</code>)'; // Usar innerHTML
+             } else {
+                 escapeInterpolationContainer.classList.add('option-disabled');
+                 escapeInterpolationCheckbox.checked = false;
+                 escapeInterpolationLabel.innerHTML = 'Escapar Interpolación/Variables (<code>$</code>)'; // Reset label con <code>
+             }
+
+             // Actualizar placeholder del nombre de variable
+             const defaultVarName = language === 'php' ? 'miVariable' : 'my_variable';
+             variableNameInput.placeholder = defaultVarName;
+
+             // Habilitar/Deshabilitar "Convertir Saltos de Línea" - Mantenido activo por simplicidad
+             // const nlSwitchContainer = convertNewlinesCheckbox.closest('.form-check');
+             // nlSwitchContainer.classList.toggle('option-disabled', stringType && !stringType.needsNewlineConversion);
+
+             escapeText(); // Llamar siempre para actualizar el output
+         }
+
+
+        // --- Lógica de Visibilidad del Nombre de Variable ---
+        function toggleVariableNameInput() {
+            variableNameContainer.classList.toggle('hidden', !generateVariableCheckbox.checked);
+            escapeText(); // Recalcular
+        }
+
+        // --- Copiar al Portapapeles ---
+        let copyTimeout = null;
+
+        function resetCopyButtonState() {
+             if (copyTimeout) clearTimeout(copyTimeout);
+             copyButton.innerHTML = '<i class="bi bi-clipboard me-1"></i> Copiar al Portapapeles';
+             copyButton.classList.remove('btn-success', 'btn-danger');
+             copyButton.classList.add('btn-primary');
+             copyButton.disabled = false;
+        }
+
+        function copyToClipboard() {
+            if (!outputText.value) return;
+            navigator.clipboard.writeText(outputText.value)
+                .then(() => {
+                    if (copyTimeout) clearTimeout(copyTimeout);
+
+                    copyButton.innerHTML = '<i class="bi bi-check-lg me-1"></i> Copiado';
+                    copyButton.classList.remove('btn-primary');
+                    copyButton.classList.add('btn-success');
+                    copyButton.disabled = true;
+
+                    copyTimeout = setTimeout(resetCopyButtonState, 2000);
+                })
+                .catch(err => {
+                    console.error('Error al copiar:', err);
+                    if (copyTimeout) clearTimeout(copyTimeout);
+
+                    const originalHTML = '<i class="bi bi-clipboard me-1"></i> Copiar al Portapapeles'; // Guardar HTML original
+                    copyButton.innerHTML = '<i class="bi bi-x-octagon-fill me-1"></i> Error';
+                    copyButton.classList.remove('btn-primary', 'btn-success');
+                    copyButton.classList.add('btn-danger');
+                    copyButton.disabled = true;
+
+                    copyTimeout = setTimeout(() => {
+                         resetCopyButtonState();
+                         // No restaurar innerHTML aquí, resetCopyButtonState ya lo hace
+                    }, 2500);
+                });
+        }
+
+         // --- Cambio de Tema ---
+        const sunIcon = '<i class="bi bi-sun-fill"></i>';
+        const moonIcon = '<i class="bi bi-moon-stars-fill"></i>';
+        function setTheme(theme) {
+             htmlElement.setAttribute('data-bs-theme', theme);
+             themeToggle.innerHTML = theme === 'dark' ? sunIcon : moonIcon;
+             localStorage.setItem('theme', theme);
+        }
+        function toggleTheme() {
+            const currentTheme = htmlElement.getAttribute('data-bs-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+
+        // --- Asignación de Event Listeners ---
+        inputText.addEventListener('input', escapeText);
+        targetLanguageSelect.addEventListener('change', updateStringTypes);
+        escapeBackslashCheckbox.addEventListener('change', escapeText);
+        escapeInterpolationCheckbox.addEventListener('change', escapeText);
+        convertNewlinesCheckbox.addEventListener('change', escapeText);
+        removeCommentsCheckbox.addEventListener('change', escapeText);
+        generateVariableCheckbox.addEventListener('change', toggleVariableNameInput);
+        variableNameInput.addEventListener('input', () => { if (generateVariableCheckbox.checked) escapeText(); });
+        copyButton.addEventListener('click', copyToClipboard);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // --- Inicialización ---
+        updateStringTypes();
+        toggleVariableNameInput();
+
+    </script>
+
+</body>
+</html>
